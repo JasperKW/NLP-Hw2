@@ -1,0 +1,119 @@
+---
+title: "regression II Oct 9"
+author: "Kongjian Wang"
+date: "2024-10-10"
+output: html_document
+---
+
+```{r}
+data <- read.csv("/Users/jasperwang/Downloads/lab5/crab.csv")
+```
+#Logistic Regression Model
+```{r}
+library(glm2)  # Provides functions for generalized linear models
+
+# Full model
+model <- glm(sat ~ weight + width, family = poisson(), data = data)
+
+summary(model)
+
+# Null model
+null_model <- glm(sat ~ 1, family = poisson(), data = data)
+
+# Likelihood ratio test
+lr_test <- anova(null_model, model, test="Chisq")
+lr_test
+```
+Separate the variables
+```{r}
+model_weight <- glm(sat ~ weight, family = poisson(), data = data)
+
+# Model with only Width
+model_width <- glm(sat ~ width, family = poisson(), data = data)
+
+model_spine <- glm(sat ~ spine, family = poisson(), data = data)
+
+# Model with only Width
+model_color <- glm(sat ~ color, family = poisson(), data = data)
+
+summary(model_weight)
+summary(model_width)
+summary(model_spine)
+summary(model_color)
+# Tests
+#anova(null_model, model_weight, test="Chisq")
+#anova(null_model, model_width, test="Chisq")
+#anova(null_model, model_spine, test="Chisq")
+#anova(null_model, model_color, test="Chisq")
+```
+
+```{r}
+library(MuMIn)
+
+# Fit models and compare AIC
+model_full <- glm(sat ~ weight + spine + color, family = poisson(), data = data)
+
+step(model_full)
+```
+
+```{r}
+model_optimized <- glm(sat ~ weight + color, family = poisson(), data = data)
+
+# Model with only Width
+model_interact <- glm(sat ~ weight + color + weight*color, family = poisson(), data = data)
+
+summary(model_optimized)
+summary(model_interact)
+summary(model_full)
+```
+
+
+```{r}
+# Load necessary library
+library(glm2)
+# Use read.fwf to read the data with adjusted widths
+# Define exact widths based on the provided layout
+widths <- c(3, 4, 3, 3, 7, 7, 3, 3)
+
+# Read the data using read.fwf, adjusting for correct widths and stripping white spaces
+crabs2 <- readxl::read_xls("/Users/jasperwang/Desktop/Regression II/homework/lab5/Crabs2.xls")
+
+# Fit individual models
+model_none <- glm(y ~ 1, family = binomial, data = crabs2)
+
+model_fc <- glm(y ~ Fcolor, family = binomial, data = crabs2)
+model_surf <- glm(y ~ Fsurf, family = binomial, data = crabs2)
+model_fcw <- glm(y ~ FCW, family = binomial, data = crabs2)
+model_AMCW <- glm(y ~ AMCW, family = binomial, data = crabs2)
+model_AMCL <- glm(y ~ AMcolor, family = binomial, data = crabs2)
+model_AMSR <- glm(y ~ AMsurf, family = binomial, data = crabs2)
+# Check summary for individual models
+summary(model_none)
+summary(model_fc)
+summary(model_surf)
+summary(model_fcw)
+summary(model_AMCW)
+summary(model_AMCL)
+summary(model_AMSR)
+
+# Fit combined model with significant predictors
+model_combined <- glm(y ~ Fsurf + AMcolor, family = binomial, data = crabs2)
+summary(model_combined)
+
+# Check interaction
+model_interaction <- glm(y ~ Fcolor + FCW + Fcolor:FCW + Fsurf, family = binomial, data = crabs2)
+summary(model_interaction)
+
+# Compare models based on AIC
+AIC(model_fc, model_fcw, model_combined, model_interaction)
+```
+
+```{r}
+# Basic logistic regression model with all main effects
+model_all <- glm(y ~ Fcolor + Fsurf + FCW + AMCW + AMcolor + AMsurf, family = binomial, data = crabs2)
+summary(model_all)
+step(model_all)
+# Checking for interaction (just an example with Fcolor and FCW)
+model_interaction <- glm(y ~ Fcolor + Fsurf + FCW + AMCW + AMcolor + AMsurf + Fcolor:FCW, family = binomial, data = crabs2)
+summary(model_interaction)
+```
