@@ -81,7 +81,7 @@ def attention(query, key, value, mask=None, dropout=None):
         if mask.dim() == 2:
             mask = mask.unsqueeze(1)
         scores = scores.masked_fill(mask == 0, float('-inf'))
-        p_attn = scores.softmax(dim=-1)
+    p_attn = scores.softmax(dim=-1)
     if dropout is not None:
         p_attn = dropout(p_attn)
     return torch.matmul(p_attn, value), p_attn
