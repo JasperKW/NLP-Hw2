@@ -75,9 +75,8 @@ class DecoderLayer(nn.Module):
     
 def attention(query, key, value, mask=None, dropout=None):
     # Your code here
-    d_k = torch.tensor(d_k).float()  # Ensure d_k is a float Tensor
-    scores = torch.matmul(query, key.transpose(-2, -1)) / torch.sqrt(d_k)
-
+    d_k = query.size(-1)
+    scores = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(d_k)  # Dot product and scaling
     if mask is not None:
         scores = scores.masked_fill(mask == 0, float('-inf'))  # Apply mask
 
