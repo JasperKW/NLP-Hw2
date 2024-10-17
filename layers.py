@@ -91,6 +91,7 @@ class MultiHeadedAttention(nn.Module):
     def __init__(self, h, d_model, dropout=0.1):
         "Take in model size and number of heads."
         super(MultiHeadedAttention, self).__init__()
+        self.linear_queries = nn.Linear(input_dim, output_dim)
         assert d_model % h == 0
         # We assume d_v always equals d_k
         self.d_k = d_model // h
@@ -100,6 +101,7 @@ class MultiHeadedAttention(nn.Module):
         self.dropout = nn.Dropout(p=dropout)
 
     def forward(self, query, key, value, mask=None):
+        query = self.linear_queries(query)
         "Implements Figure 2"
         if mask is not None:
             # Same mask applied to all h heads.
