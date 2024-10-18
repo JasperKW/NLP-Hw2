@@ -106,8 +106,8 @@ def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, e
         tgt_mask = torch.triu(torch.ones((ys.size(1), ys.size(1))), 1).type(torch.float).cuda()
 
         # Calculate probabilities for the next token
-        out = model.decode(seq, memory, src_mask, tgt_mask)
-        prob = torch.softmax(model.generator(out[:, -1]), dim=-1)
+        out = model.decode(ys, memory, src_mask, tgt_mask)
+        prob = torch.softmax(model.generator(out[:, -1]), dim=-1)  # Get probabilities for the next token
 
         # Set probabilities of end token to 0 (except when already ended)
         prob[:, end_idx] = prob[:, end_idx].where(ys[:, -1] == end_idx, torch.tensor(0., dtype=torch.float).cuda())
