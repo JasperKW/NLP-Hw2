@@ -113,8 +113,8 @@ def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, e
                 continue
 
             # Decode using the model, memory, and source mask
-            tgt_mask = torch.tril(torch.ones((seq.size(1), seq.size(1)))).type_as(src_mask)
-            out = model.decode(seq, memory, tgt_mask)
+            tgt_mask = torch.tril(torch.ones((seq.size(1), seq.size(1)))).type_as(src_mask).unsqueeze(0)
+            out = model.decode(memory, seq, tgt_mask)
             prob = model.generator(out[:, -1])
 
             # Set probabilities of end token to 0 (except when already ended)
