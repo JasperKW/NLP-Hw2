@@ -75,7 +75,7 @@ class DecoderLayer(nn.Module):
     
     def attention(query, key, value, mask=None, dropout=None):
         "Compute 'Scaled Dot Product Attention'"
-        d_k = query.size(-1)
+       d_k = query.size(-1)
         scores = torch.matmul(query, key.transpose(-2, -1))
         p_attn = None
         if mask is not None:
