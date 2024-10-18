@@ -145,7 +145,13 @@ def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, e
     # Return the top-scored sequence
         top_seq = ys[top_scores.argmax()].tolist()
     # convert the top scored sequence to a list of text tokens
-    return top_seq
+    decoded_words = [token_to_word(idx) for idx in top_seq if idx != end_idx]
+
+    return " ".join(decoded_words)
+
+def token_to_word(token_idx):
+    # This function should map token indices to words, using the model's vocabulary
+    return model.vocab.itos[token_idx]  # Example: Index to string conversion
         
 
 
