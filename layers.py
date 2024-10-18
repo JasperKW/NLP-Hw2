@@ -103,6 +103,7 @@ class MultiHeadedAttention(nn.Module):
         self.dropout = nn.Dropout(p=dropout)
 
     def forward(self, query, key, value, mask=None):
+        # Your code here
         query = self.linear_queries(query)
         "Implements Figure 2"
         if mask is not None:
@@ -131,22 +132,6 @@ class MultiHeadedAttention(nn.Module):
         del key
         del value
         return self.linears[-1](x)
-        
-    def forward(self, query, key, value, mask=None):
-        # Your code here
-        batch_size = query.size(0)
-
-        # Project and reshape for multi-headed attention
-        query = self.linear_queries(query).view(batch_size, -1, self.h, self.d_k).transpose(1, 2)
-        key = self.linear_keys(key).view(batch_size, -1, self.h, self.d_k).transpose(1, 2)
-        value = self.linear_values(value).view(batch_size, -1, self.h, self.d_k).transpose(1, 2)
-
-        # Apply the revised attention function
-        x, attn = attention(query, key, value, mask, self.dropout)
-
-        # Concatenate heads and project back to d_model dimensions
-        x = x.transpose(1, 2).contiguous().view(batch_size, -1, self.h * self.d_k)
-        return self.linear_output(x), attn
     
     
     
