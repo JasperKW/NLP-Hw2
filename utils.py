@@ -103,8 +103,7 @@ def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, e
 
     for i in range(max_len - 1):
         # TODO: Decode using the model, memory, and source mask
-        tgt_mask = torch.triu(torch.ones((ys.size(1), ys.size(1))), 1).type_as(src_mask.data).bool()
-        tgt_mask = tgt_mask.cuda()
+        tgt_mask = torch.triu(torch.ones((ys.size(1), ys.size(1)), dtype=torch.long), 1).cuda()
 
         # Calculate probabilities for the next token
         out = model.decode(ys, memory, src_mask, tgt_mask)
