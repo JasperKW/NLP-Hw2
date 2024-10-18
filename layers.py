@@ -128,19 +128,6 @@ class MultiHeadedAttention(nn.Module):
         x = x.transpose(1, 2).contiguous().view(batch_size, -1, self.h * self.d_v)
         return self.out(x)
     
-    def attention(query, key, value, mask=None, dropout=None):
-        "Compute 'Scaled Dot Product Attention'"
-        d_k = query.size(-1)
-        scores = torch.matmul(query, key.transpose(-2, -1))
-        p_attn = None
-        if mask is not None:
-            if mask.dim() == 2:
-                mask = mask.unsqueeze(1)
-            scores = scores.masked_fill(mask == 0, float('-inf'))
-        p_attn = scores.softmax(dim=-1)
-        if dropout is not None:
-            p_attn = dropout(p_attn)
-        return torch.matmul(p_attn, value), p_attn
 
     
 class PositionwiseFeedForward(nn.Module):
