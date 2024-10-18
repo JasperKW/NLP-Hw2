@@ -116,12 +116,12 @@ def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, e
         total_scores = scores.unsqueeze(-1) + torch.log(prob)
 
         # Get top-k scores and indices
-        top_scores, top_indices = total_scores.view(-1).topk(beam_size, 0)
+        top_scores, indices = total_scores.view(-1).topk(beam_size, 0)
 
         # TODO: Extract beam indices and token indices from top-k scores
         vocab_size = prob.size(1)
-        beam_indices = torch.divide(top_indices, vocab_size, rounding_mode='floor').long()  # Replace with torch.divide(indices, vocab_size, rounding_mode='floor')
-        token_indices = torch.divide(top_indices, vocab_size, rounding_mode='floor').long()  # Replace with torch.divide(indices, vocab_size, rounding_mode='floor')
+        beam_indices = torch.divide(indices, vocab_size, rounding_mode='floor').long()  # Replace with torch.divide(indices, vocab_size, rounding_mode='floor')
+        token_indices = torch.divide(indices, vocab_size, rounding_mode='floor').long()  # Replace with torch.divide(indices, vocab_size, rounding_mode='floor')
 
         # Prepare next decoder input
         next_decoder_input = []
