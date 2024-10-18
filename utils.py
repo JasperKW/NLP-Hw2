@@ -113,7 +113,7 @@ def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, e
                 continue
 
             # Decode using the model, memory, and source mask
-            tgt_mask = model.generate_square_subsequent_mask(seq.size(1)).type_as(src_mask)
+            tgt_mask = torch.tril(torch.ones((seq.size(1), seq.size(1)))).type_as(src_mask)
             out = model.decode(seq, memory, tgt_mask)
             prob = model.generator(out[:, -1])
 
