@@ -102,8 +102,9 @@ def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, e
     scores = torch.zeros(beam_size).cuda()
 
     for i in range(max_len - 1):
-        # TODO: Decode using the model, memory, and source mask
-        tgt_mask = torch.triu(torch.ones((ys.size(1), ys.size(1)), dtype=torch.long), 1).cuda()
+        # Decode using the model, memory, and source mask
+        tgt_mask = torch.triu(torch.ones((ys.size(1), ys.size(1))), 1).type_as(src_mask.data).bool()
+        tgt_mask = tgt_mask.cuda()
 
         # Calculate probabilities for the next token
         out = model.decode(ys, memory, src_mask, tgt_mask)
@@ -116,18 +117,18 @@ def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, e
         total_scores = scores.unsqueeze(-1) + torch.log(prob)
 
         # Get top-k scores and indices
-        top_scores, indices = total_scores.view(-1).topk(beam_size, 0)
+        top_scores, top_indices = total_scores.view(-1).topk(beam_size, 0)
 
-        # TODO: Extract beam indices and token indices from top-k scores
-        vocab_size = prob.size(1)
-        beam_indices = torch.divide(indices, vocab_size, rounding_mode='floor').long()  # Replace with torch.divide(indices, vocab_size, rounding_mode='floor')
-        token_indices = torch.divide(indices, vocab_size, rounding_mode='floor').long()  # Replace with torch.divide(indices, vocab_size, rounding_mode='floor')
+        # Extract beam indices and token indices from top-k scores
+        beam_indices = (top_indices // prob.size(1)).long()  # Ensuring correct type
+        token_indices = (top_indices % prob.size(1)).long()  # Ensuring correct type
 
         # Prepare next decoder input
         next_decoder_input = []
         for beam_index, token_index in zip(beam_indices, token_indices):
-            # TODO: Handle end token condition and append to next_decoder_input
             next_seq = torch.cat([ys[beam_index], token_index.unsqueeze(0)], dim=0)
+            if token_index == end_idx:
+                continue  # Skip adding end_idx to next input
             next_decoder_input.append(next_seq)
 
         # Update ys
@@ -143,12 +144,11 @@ def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, e
             memory = memory.repeat(beam_size, 1, 1)
     
     # Return the top-scored sequence
-        top_seq = ys[top_scores.argmax()].tolist()
-    # convert the top scored sequence to a list of text tokens
+    top_seq = ys[top_scores.argmax()].tolist()
+    # Convert the top scored sequence to a list of text tokens
     decoded_words = [model.vocab.itos[idx] for idx in top_seq if idx != end_idx]
 
     return " ".join(decoded_words)
-
 
 def collate_batch(
     batch,
