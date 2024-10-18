@@ -99,18 +99,18 @@ def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, e
 
     # Initialize decoder input and scores
     ys = torch.full((beam_size, 1), start_symbol, dtype=torch.long).cuda()  # start_symbol is usually the index for <sos>
-    scores = torch.zeros(beam_size).cuda()
+    scores = torch.zeros(beam_size, dtype=torch.float).cuda()
 
     for i in range(max_len - 1):
-        # TODO: Decode using the model, memory, and source mask
-        tgt_mask = torch.triu(torch.ones((ys.size(1), ys.size(1))), 1).type(torch.long).cuda()
+        # Create a target mask for the sequence
+        tgt_mask = torch.triu(torch.ones((ys.size(1), ys.size(1))), 1).type(torch.float).cuda()
 
         # Calculate probabilities for the next token
-        out = model.decode(ys, memory, src_mask, tgt_mask)
+        out = model.decode(seq, memory, src_mask, tgt_mask)
         prob = torch.softmax(model.generator(out[:, -1]), dim=-1)
 
         # Set probabilities of end token to 0 (except when already ended)
-        prob[:, end_idx] = prob[:, end_idx].where(ys[:, -1] == end_idx, torch.tensor(0.).cuda())
+        prob[:, end_idx] = prob[:, end_idx].where(ys[:, -1] == end_idx, torch.tensor(0., dtype=torch.float).cuda())
 
         # Update scores
         total_scores = scores.unsqueeze(-1) + torch.log(prob)
