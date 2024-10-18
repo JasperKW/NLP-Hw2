@@ -98,8 +98,8 @@ def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, e
     memory = model.encode(src, src_mask)
 
     # Initialize decoder input and scores
-    ys = torch.full((beam_size, 1), start_symbol).cuda()  # start_symbol is usually the index for <sos>
-    scores = torch.Tensor([0.]).cuda()
+    ys = torch.full((beam_size, 1), start_symbol, dtype=torch.long).cuda()  # start_symbol is usually the index for <sos>
+    scores = torch.zeros(beam_size).cuda()
 
     for i in range(max_len - 1):
         # TODO: Decode using the model, memory, and source mask
