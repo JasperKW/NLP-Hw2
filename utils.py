@@ -109,49 +109,50 @@ def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, e
     completed_sequences = []
 
     for i in range(max_len - 1):
-        candidates = []
-        for seq, score in beam:
-            if seq[0, -1] == end_idx:
-                # If the sequence ends with the end symbol, add it to completed sequences
-                completed_sequences.append((seq, score))
-                continue
+        # TODO: Decode using the model, memory, and source mask
+        tgt_mask = torch.triu(torch.ones((ys.size(1), ys.size(1)), dtype=torch.long), 1).cuda()
 
-            # Decode using the model, memory, and source mask
-            tgt_mask = torch.tril(torch.ones((seq.size(1), seq.size(1)), dtype=torch.long)).cuda()  # Modified tgt_mask to use Long dtype
-            out = model.decode(memory, seq, tgt_mask)
-            prob = model.generator(out[:, -1])
+        # Calculate probabilities for the next token
+        out = model.decode(ys, memory, src_mask, tgt_mask)
+        prob = torch.softmax(model.generator(out[:, -1]), dim=-1)
 
-            # Set probabilities of end token to 0 (except when already ended)
-            prob[:, end_idx] = 0
+        # Update scores
+        total_scores = scores.unsqueeze(-1) + torch.log(prob)
 
-            # Update scores
-            topk_prob, topk_indices = torch.topk(prob, beam_size)
-            for k in range(beam_size):
-                new_score = score + topk_prob[0][k].item()
-                candidates.append((seq, new_score, topk_indices[0][k].item()))
+        # Get top-k scores and indices
+        top_scores, indices = total_scores.view(-1).topk(beam_size, 0)
 
-        # Sort all candidates by score and select the best ones
-        candidates = sorted(candidates, key=lambda x: x[1], reverse=True)
-        beam = []
+        # TODO: Extract beam indices and token indices from top-k scores
+        vocab_size = prob.size(1)
+        beam_indices = torch.divide(indices, vocab_size, rounding_mode='floor').long()  # Replace with torch.divide(indices, vocab_size, rounding_mode='floor')
+        token_indices = torch.divide(indices, vocab_size, rounding_mode='floor').long()  # Replace with torch.divide(indices, vocab_size, rounding_mode='floor')
 
-        for seq, score, token_idx in candidates[:beam_size]:
-            # Extract beam indices and token indices from top-k scores
-            if token_idx == end_idx:
-                completed_sequences.append((seq, score))
-            else:
-                next_seq = torch.cat([seq, torch.tensor([[token_idx]], dtype=torch.long).cuda()], dim=1)
-                beam.append((next_seq, score))
+        # Prepare next decoder input
+        next_decoder_input = []
+        for beam_index, token_index in zip(beam_indices, token_indices):
+            # TODO: Handle end token condition and append to next_decoder_input
+            next_seq = torch.cat([ys[beam_index], token_index.unsqueeze(0)], dim=0)
+            next_decoder_input.append(next_seq)
+
+        # Update ys
+        ys = torch.stack(next_decoder_input, dim=0)
+        scores = top_scores
 
         # Check if all beams are finished, exit
-        if len(completed_sequences) == beam_size:
+        if (ys[:, -1] == end_idx).all():
             break
 
-    # Add remaining beams to completed sequences
-    completed_sequences += beam
-    completed_sequences = sorted(completed_sequences, key=lambda x: x[1], reverse=True)
-
+        # Expand encoder output for beam size (only once)
+        if i == 0:
+            memory = memory.repeat(beam_size, 1, 1)
+    
     # Return the top-scored sequence
-    return completed_sequences[0][0]
+        top_seq = ys[top_scores.argmax()].tolist()
+    # convert the top scored sequence to a list of text tokens
+    decoded_words = [model.vocab.itos[idx] for idx in top_seq if idx != end_idx]
+
+    return " ".join(decoded_words)
+
 
 
 def collate_batch(
