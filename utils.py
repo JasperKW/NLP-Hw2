@@ -93,6 +93,7 @@ def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, e
     """
     Implement beam search decoding with 'beam_size' width
     """
+    
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Encode source input using the model
