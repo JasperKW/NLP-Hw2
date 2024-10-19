@@ -95,11 +95,13 @@ def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, e
     """
 
     # Encode source input using the model
-    memory = model.encode(src, src_mask)
+    src = src.to(device)
+    src_mask = src_mask.to(device)
+    memory = model.encode(src, src_mask).to(device)
 
     # Initialize decoder input and scores
-    ys = torch.tensor([[start_symbol]], dtype=torch.long).cuda()
-    scores = torch.Tensor([0.]).cuda()
+    ys = torch.ones(beam_size, 1).fill_(start_symbol).type(torch.long).to(device)
+    scores = torch.zeros(beam_size).to(device)  # Scores for all beams
 
     beam = [(ys, scores)]
     completed_sequences = []
