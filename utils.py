@@ -119,7 +119,7 @@ def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, e
 
             # Decode using the model, memory, and target mask
             tgt_mask = torch.ones((seq.size(1), seq.size(1)), dtype=torch.long).tril().to(device)
-            out = model.decode(memory, seq, tgt_mask)
+            out = model.decode(seq=seq, memory=memory, tgt_mask=tgt_mask)
             prob = model.generator(out[:, -1])
 
             # Update scores and get top-k tokens for each sequence in the beam
