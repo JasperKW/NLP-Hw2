@@ -79,7 +79,8 @@ def attention(query, key, value, mask=None, dropout=None):
     scores = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(d_k)  # Scaled dot product
     
     if mask is not None:
-        scores = scores.masked_fill(mask == 0, float('-inf'))  # Apply mask to ignore padded positions
+        # Ensure the mask is broadcastable to the shape of scores
+        scores = scores.masked_fill(mask.unsqueeze(1) == 0, float('-inf'))
     
     p_attn = F.softmax(scores, dim=-1)  # Softmax to get attention weights
     
@@ -92,11 +93,6 @@ class MultiHeadedAttention(nn.Module):
     def __init__(self, h, d_model, dropout=0.1):
         "Take in model size and number of heads."
         super(MultiHeadedAttention, self).__init__()
-        input_dim = d_model
-        output_dim = d_model
-        self.linear_queries = nn.Linear(input_dim, output_dim)
-        assert d_model % h == 0
-        # We assume d_v always equals d_k
         self.d_k = d_model // h
         self.h = h
         self.linears = clones(nn.Linear(d_model, d_model), 4)
