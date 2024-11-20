@@ -90,61 +90,76 @@ def greedy_decode(model, src, src_mask, max_len, start_symbol):
 
 
 def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, end_idx):
-    """
-    Implement beam search decoding with 'beam_size' width
-    """
-    
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # Encode source input using the model
+    # Encode the source input using the model
     src = src.to(device)
     src_mask = src_mask.to(device)
     memory = model.encode(src, src_mask).to(device)
 
-    # Initialize decoder input and scores
+    # Initialize decoder input with the start symbol for all beams
     ys = torch.ones(beam_size, 1).fill_(start_symbol).type(torch.long).to(device)
     scores = torch.zeros(beam_size).to(device)  # Scores for all beams
 
-    # Beam search
-    beam = [(ys, scores)]  # Each beam stores (decoder input, score)
-    completed_sequences = []
+    finished = [False] * beam_size
+    sequences = [ys.clone() for _ in range(beam_size)]  # Sequences for each beam
 
-    for _ in range(max_len - 1):
-        candidates = []
-        for seq, score in beam:
-            if (seq[:, -1] == end_idx).all():
-                # If all sequences end with the end symbol, add them to completed sequences
-                completed_sequences.append((seq, score))
-                continue
+    for i in range(max_len - 1):
+        if i == 0:  # Expand for beam size
+            memory = memory.expand(beam_size, -1, -1)
+            src_mask = src_mask.expand(beam_size, -1, -1)
+            tgt_mask = tgt_mask.expand(beam_size, -1, -1)
+    
+        tgt_mask = subsequent_mask(ys.size(1)).type_as(src.data).to(device)
+        out = model.decode(memory, src_mask, torch.cat(sequences, dim=0).to(device), tgt_mask)
 
-            # Decode using the model, memory, and target mask
-            tgt_mask = torch.ones((seq.size(1), seq.size(1)), dtype=torch.long).tril().to(device)
-            out = model.decode(seq=seq, memory=memory, tgt_mask=tgt_mask)
-            prob = model.generator(out[:, -1])
+        # Get probabilities for the last token in each beam sequence
+        prob = model.generator(out[:, -1]).to(device)
 
-            # Update scores and get top-k tokens for each sequence in the beam
-            topk_prob, topk_indices = torch.topk(prob, beam_size, dim=-1)
-            for i in range(seq.size(0)):  # Iterate over each sequence in the current beam
-                for k in range(beam_size):
-                    new_score = score[i] + topk_prob[i, k].item()
-                    new_seq = torch.cat([seq[i], topk_indices[i, k].view(1).to(device)])
-                    candidates.append((new_seq.unsqueeze(0), new_score))
+        if beam_size == 1:  # If beam_size is 1, act like greedy decoding
+            _, next_word = torch.max(prob, dim=1)
+            next_word = next_word.data[0].item()
+            ys = torch.cat([ys, torch.ones(1, 1).type_as(ys).fill_(next_word)], dim=1)
+            continue
 
-        # Sort all candidates by score and select the best ones
-        candidates = sorted(candidates, key=lambda x: x[1], reverse=True)[:beam_size]
-        beam = [(torch.cat([c[0] for c in candidates], dim=0), torch.tensor([c[1] for c in candidates], device=device))]
+        # Add the previous scores to the current token log-probabilities
+        prob = prob + scores.view(beam_size, 1)
 
-        # Check if all beams are finished, exit
-        if all((seq[:, -1] == end_idx).all() for seq, _ in beam):
-            completed_sequences.extend(beam)
+        # Flatten prob to get top k token probabilities across all beams
+        vocab_size = prob.size(-1)
+        topk_scores, topk_indices = torch.topk(prob.view(-1), beam_size)
+
+        # Extract beam indices and token indices
+        beam_indices = torch.div(topk_indices, vocab_size, rounding_mode='floor')
+        token_indices = topk_indices % vocab_size
+
+        # Update sequences and scores
+        next_sequences = []
+        next_scores = []
+
+        for beam_idx, token_idx, score in zip(beam_indices, token_indices, topk_scores):
+            seq = torch.cat([sequences[beam_idx], token_idx.view(1, 1)], dim=1).to(device)
+            next_sequences.append(seq)
+            next_scores.append(score)
+
+            # Mark the beam as finished if the end token is generated
+            if token_idx.item() == end_idx:
+                finished[beam_idx] = True
+
+        sequences = next_sequences
+        scores = torch.stack(next_scores).to(device)
+
+        if all(finished):  # Stop if all beams have finished
             break
 
-    # Add remaining beams to completed sequences
-    completed_sequences.extend(beam)
-    completed_sequences = sorted(completed_sequences, key=lambda x: x[1], reverse=True)
+    # Return the sequence with the highest score
+    best_sequence = sequences[scores.argmax().item()].squeeze(0).tolist()
 
-    # Return the top-scored sequence
-    return completed_sequences[0][0]
+    return best_sequence
+
+
+
+
 
 
 def collate_batch(
@@ -230,4 +245,3 @@ def compute_corpus_level_bleu(refs, hyps):
     bleu = sacrebleu.corpus_bleu(hyps, [refs])
 
     return bleu.score
-
